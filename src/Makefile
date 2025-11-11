@@ -22,7 +22,7 @@ ifeq ($(shell test $(LLVM) -ge 15 -a $(LLVM) -lt 17; echo $$?), 0)
 endif
 
 OS = $(shell uname)
-CPU = $(shell uname -m)
+CPU ?= $(shell uname -m)
 
 BIN = ../bin
 LIB = ../lib
