@@ -2,13 +2,19 @@
 
 .SILENT:
 
-CC = clang
+CC ?= clang
+CFLAGS ?=
+
+PKG_CFLAGS := $(shell pkg-config --cflags libffi)
+PKG_LIBS   := $(shell pkg-config --libs readline libffi)
+
+STRIP ?= strip
+LLC ?= llc
+ASM ?= opt -O2
+
 PIL = ../pil
-ASM = opt -O2
-LLC = llc
 LINK = llvm-link
 SHARED = -shared
-STRIP = strip
 
 LLVM = $(shell llvm-config --version | cut -d. -f1)
 ifeq ($(shell test $(LLVM) -ge 15 -a $(LLVM) -lt 17; echo $$?), 0)
@@ -29,13 +35,13 @@ so: $(LIB)/picolisp.so
 
 # System definitions
 $(LIB)/sysdefs: sysdefs.c
-	$(CC) -w -D_OS='"$(OS)"' -D_CPU='"$(CPU)"' sysdefs.c  &&  ./a.out > $(LIB)/sysdefs  &&  rm ./a.out
+	$(CC) $(CFLAGS) -w -D_OS='"$(OS)"' -D_CPU='"$(CPU)"' sysdefs.c  &&  ./a.out > $(LIB)/sysdefs  &&  rm ./a.out
 
 # Base system
 $(BIN)/picolisp: picolisp.bc
 	mkdir -p $(BIN)
 	$(LLC) picolisp.bc -relocation-model=pic -o picolisp.s
-	$(CC) picolisp.s -o $(BIN)/picolisp -rdynamic -lc -lutil -lm -ldl `pkg-config --libs readline libffi`
+	$(CC) $(CFLAGS) picolisp.s -o $(BIN)/picolisp -rdynamic -lc -lutil -lm -ldl $(PKG_LIBS)
 	$(STRIP) $(BIN)/picolisp
 
 picolisp.bc: base.bc lib.bc
@@ -49,12 +55,12 @@ base.ll: $(INC) $(SRC) lib/ex.l
 	mv base.map $(LIB)/map
 
 lib.bc: pico.h lib.c
-	$(CC) -O3 -w -c -o lib.bc -D_OS='"$(OS)"' -D_CPU='"$(CPU)"' `pkg-config --cflags libffi` -emit-llvm lib.c
+	$(CC) $(CFLAGS) -O3 -w -c -o lib.bc -D_OS='"$(OS)"' -D_CPU='"$(CPU)"' $(PKG_CFLAGS) -emit-llvm lib.c
 
 # Base system as shared library
 $(LIB)/picolisp.so: picolisp.so.bc
 	$(LLC) picolisp.so.bc -relocation-model=pic -o picolisp.so.s
-	$(CC) picolisp.so.s -o $(LIB)/picolisp.so $(SHARED)
+	$(CC) $(CFLAGS) picolisp.so.s -o $(LIB)/picolisp.so $(SHARED)
 	$(STRIP) $(LIB)/picolisp.so
 
 picolisp.so.bc: base.so.bc lib.so.bc
@@ -68,12 +74,12 @@ base.so.ll: $(INC) $(SRC) lib/so.l
 	rm base.map
 
 lib.so.bc: pico.h lib.so.c
-	$(CC) -O3 -w -c -fPIC -o lib.so.bc -D_OS='"$(OS)"' -D_CPU='"$(CPU)"' `pkg-config --cflags libffi` -emit-llvm lib.so.c
+	$(CC) $(CFLAGS) -O3 -w -c -fPIC -o lib.so.bc -D_OS='"$(OS)"' -D_CPU='"$(CPU)"' $(PKG_CFLAGS) -emit-llvm lib.so.c
 
 # Extension libraries
 $(LIB)/ext.so: ext.bc
 	$(LLC) ext.bc -relocation-model=pic -o ext.s
-	$(CC) ext.s -o $(LIB)/ext.so $(SHARED)
+	$(CC) $(CFLAGS) ext.s -o $(LIB)/ext.so $(SHARED)
 	$(STRIP) $(LIB)/ext.so
 
 ext.bc: ext.ll
@@ -84,7 +90,7 @@ ext.ll: $(INC) ext.l
 
 $(LIB)/ht.so: ht.bc
 	$(LLC) ht.bc -relocation-model=pic -o ht.s
-	$(CC) ht.s -o $(LIB)/ht.so $(SHARED)
+	$(CC) $(CFLAGS) ht.s -o $(LIB)/ht.so $(SHARED)
 	$(STRIP) $(LIB)/ht.so
 
 ht.bc: ht.ll
@@ -95,16 +101,16 @@ ht.ll: $(INC) ht.l
 
 # Tools
 $(BIN)/balance: balance.c
-	$(CC) -O3 -w -o $(BIN)/balance balance.c
+	$(CC) $(CFLAGS) -O3 -w -o $(BIN)/balance balance.c
 	$(STRIP) $(BIN)/balance
 
 # Gate
 $(BIN)/ssl: ssl.c
-	$(CC) -O3 -w -o $(BIN)/ssl ssl.c -lssl -lcrypto
+	$(CC) $(CFLAGS) -O3 -w -o $(BIN)/ssl ssl.c -lssl -lcrypto
 	$(STRIP) $(BIN)/ssl
 
 $(BIN)/httpGate: httpGate.c
-	$(CC) -O3 -w -o $(BIN)/httpGate httpGate.c -lssl -lcrypto
+	$(CC) $(CFLAGS) -O3 -w -o $(BIN)/httpGate httpGate.c -lssl -lcrypto
 	$(STRIP) $(BIN)/httpGate
 
 # Clean up
