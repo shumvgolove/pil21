@@ -31,6 +31,7 @@ INC = lib/llvm.l vers.l defs.l glob.l dec.l
 SRC = main.l gc.l big.l sym.l io.l db.l apply.l flow.l subr.l
 
 all: $(LIB)/sysdefs $(BIN)/picolisp $(LIB)/ext.so $(LIB)/ht.so $(BIN)/balance $(BIN)/ssl $(BIN)/httpGate
+sysdefs: $(LIB)/sysdefs
 so: $(LIB)/picolisp.so
 
 # System definitions
